@@ -1,8 +1,5 @@
 { pkgs ? import <nixpkgs> {} }:
-
-pkgs.mkShell {
-  # Explicitly specify LLVM/clang packages
-  packages = with pkgs; [
+let packages = with pkgs; [
     llvm
     clang
     llvmPackages.libclang
@@ -10,7 +7,10 @@ pkgs.mkShell {
     pkg-config
     python3
   ];
-  # Set environment variables needed by clang-sys
+in
+pkgs.mkShell {
+  packages = packages;
+  
   shellHook = ''
     export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
     export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [

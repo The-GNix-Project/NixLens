@@ -3,15 +3,8 @@ name = "nix_parser"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-# This tells Cargo to produce a dynamic library suitable for Python
-crate-type = ["cdylib"]
-
+# Cargo.toml
 [dependencies]
-pyo3 = { version = "0.24.0", features = ["extension-module"] }
-nixel = "5.2.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-[package.metadata.maturin]
-name = "nix_parser"
-module-name = "nix_parser.nix_parser"
+tokio = { version = "1.0", features = ["full"] }
