@@ -10,7 +10,7 @@ let packages = with pkgs; [
 in
 pkgs.mkShell {
   packages = packages;
-  
+
   shellHook = ''
     export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
     export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
@@ -18,13 +18,5 @@ pkgs.mkShell {
       pkgs.clang
       pkgs.llvmPackages.libclang
     ]}:$LD_LIBRARY_PATH"
-
-    if [ ! -d "venv" ]; then
-      python -m venv venv
-      source venv/bin/activate
-      pip install -r requirements.txt
-    else
-      source venv/bin/activate
-    fi
   '';
 }
