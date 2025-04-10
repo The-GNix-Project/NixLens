@@ -5,7 +5,8 @@ let packages = with pkgs; [
     llvmPackages.libclang
     stdenv.cc.cc.lib
     pkg-config
-    python3
+
+    nixd
   ];
 in
 pkgs.mkShell {

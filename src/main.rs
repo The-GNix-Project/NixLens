@@ -15,83 +15,60 @@
 // You should have received a copy of the GNU General Public License                        |
 // along with GNix.  If not, see <https://www.gnu.org/licenses/>.                           |
 // -----------------------------------------------------------------------------------------|
+// src/main.rs
+mod lsp;
 
-use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
-use tokio::process::Command;
-use std::path::PathBuf;
-
-#[derive(Serialize, Deserialize)]
-struct InitializeParams {
-    process_id: u32,
-    root_uri: String,
-    capabilities: serde_json::Value,
-}
-
-fn to_lsp_message(json: serde_json::Value) -> String {
-    let body = json.to_string();
-    format!("Content-Length: {}\r\n\r\n{}", body.len(), body)
-}
-
-async fn send_lsp(stdin: &mut tokio::process::ChildStdin, msg: serde_json::Value) {
-    let lsp_msg = to_lsp_message(msg);
-    stdin.write_all(lsp_msg.as_bytes()).await.unwrap();
-}
-
-async fn read_lsp_message(reader: &mut BufReader<tokio::process::ChildStdout>) -> serde_json::Value {
-    let mut content_length = 0;
-    let mut line = String::new();
-
-    loop {
-        line.clear();
-        reader.read_line(&mut line).await.unwrap();
-        if line == "\r\n" {
-            break;
-        }
-        if line.to_ascii_lowercase().starts_with("content-length:") {
-            let parts: Vec<&str> = line.split(':').collect();
-            content_length = parts[1].trim().parse::<usize>().unwrap();
-        }
-    }
-
-    let mut body = vec![0u8; content_length];
-    reader.read_exact(&mut body).await.unwrap();
-    serde_json::from_slice(&body).unwrap()
-}
+use lsp::{LspClientBuilder, protocol::requests, types};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Start the nixd language server
-    let mut child = Command::new("nixd")
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()?;
+async fn main() -> Result<(), lsp::error::LspError> {
+    // Build client with builder pattern
+    let mut transport = LspClientBuilder::new("nixd")
+        .build()
+        .await?;
 
-    let mut stdin = child.stdin.take().unwrap();
-    let stdout = child.stdout.take().unwrap();
-    let mut reader = BufReader::new(stdout);
-
-    // Get absolute file URI
-    let file_path: PathBuf = std::env::current_dir()?.join("example.nix");
+    // Get file paths
+    let current_dir = std::env::current_dir()?;
+    let root_uri = format!("file://{}", current_dir.to_string_lossy());
+    let file_path = current_dir.join("example.nix");
     let file_uri = format!("file://{}", file_path.to_string_lossy());
 
-    // Initialize
-    let params = InitializeParams {
+    // Initialize using protocol types
+    let init_params = requests::InitializeParams {
         process_id: std::process::id(),
-        root_uri: format!("file://{}", std::env::current_dir()?.to_string_lossy()),
-        capabilities: serde_json::json!({}),
+        root_uri: root_uri.clone(),
+        capabilities: serde_json::json!({
+            "textDocument": {
+                "documentSymbol": {
+                    "hierarchicalDocumentSymbolSupport": true
+                }
+            }
+        }),
     };
-    let init_msg = serde_json::json!({
+
+    // Send initialization request
+    let init_message = serde_json::json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "initialize",
-        "params": params,
+        "params": init_params,
     });
-    send_lsp(&mut stdin, init_msg).await;
-    let response = read_lsp_message(&mut reader).await;
-    println!("Init response: {}", response);
+    
+    transport.send_raw(init_message.to_string()).await?;
+    
+    // Read initialization response
+    let init_response = transport.receive_raw().await?;
+    println!("Server capabilities:\n{}", serde_json::to_string_pretty(&init_response)?);
 
-    // didOpen with real file contents
+    // Send initialized notification
+    let initialized_msg = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "initialized",
+        "params": {}
+    });
+    transport.send_raw(initialized_msg.to_string()).await?;
+
+    // Open document
     let content = std::fs::read_to_string(&file_path)?;
     let did_open_msg = serde_json::json!({
         "jsonrpc": "2.0",
@@ -105,43 +82,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     });
-    send_lsp(&mut stdin, did_open_msg).await;
-    let _ = read_lsp_message(&mut reader).await; // ignore didOpen response if any
+    transport.send_raw(did_open_msg.to_string()).await?;
 
-    // textDocument/documentSymbol
-    let document_symbol_msg = serde_json::json!({
+    // Wait for server to process didOpen (no formal response required)
+    let _ = transport.receive_raw().await?;
+
+    // Request document symbols
+    let symbol_params = requests::DocumentSymbolParams {
+        text_document: types::TextDocumentIdentifier { uri: file_uri.clone() }
+    };
+    let symbol_request = serde_json::json!({
         "jsonrpc": "2.0",
         "id": 2,
         "method": "textDocument/documentSymbol",
-        "params": {
-            "textDocument": {
-                "uri": file_uri
-            }
-        }
+        "params": symbol_params
     });
-    send_lsp(&mut stdin, document_symbol_msg).await;
-    let symbol_response = read_lsp_message(&mut reader).await;
-    let pretty = serde_json::to_string_pretty(&symbol_response)?;
-    println!("Document symbols:\n{}", pretty);
+    transport.send_raw(symbol_request.to_string()).await?;
 
+    // Get symbol response
+    let symbol_response = transport.receive_raw().await?;
+    println!("Document symbols:\n{}", serde_json::to_string_pretty(&symbol_response)?);
 
-    // Clean shutdown
+    // Send shutdown request
     let shutdown_msg = serde_json::json!({
         "jsonrpc": "2.0",
         "id": 3,
         "method": "shutdown",
         "params": null
     });
-    send_lsp(&mut stdin, shutdown_msg).await;
-    let shutdown_response = read_lsp_message(&mut reader).await;
+    transport.send_raw(shutdown_msg.to_string()).await?;
+     
+    // Get shutdown response
+    let shutdown_response = transport.receive_raw().await?;
     println!("Shutdown response: {}", shutdown_response);
 
+    // Send exit notification
     let exit_msg = serde_json::json!({
         "jsonrpc": "2.0",
         "method": "exit",
         "params": null
     });
-    send_lsp(&mut stdin, exit_msg).await;
+    transport.send_raw(exit_msg.to_string()).await?;
 
     Ok(())
 }
