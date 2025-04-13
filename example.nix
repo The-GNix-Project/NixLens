@@ -1,4 +1,9 @@
-{
-  attr = 1;
-  b = 2;
-}
+myInput:
+let 
+  myInt = 2;
+in
+  {
+    myNum = myInput + myInt;
+    myString = "Hello World!";
+    myPath = ./nixos;
+  }

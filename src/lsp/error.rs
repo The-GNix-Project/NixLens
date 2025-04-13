@@ -21,16 +21,12 @@ use thiserror::Error;
 pub enum LspError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
-    
     #[error("LSP protocol error: {0}")]
     Protocol(String),
-
     #[error("Server error: {0}")]
     Server(String),
-    
     #[error("Request timeout")]
     Timeout,
 }
