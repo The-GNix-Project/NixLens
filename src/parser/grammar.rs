@@ -16,19 +16,14 @@
 // along with GNix.  If not, see <https://www.gnu.org/licenses/>.                           |
 // -----------------------------------------------------------------------------------------|
 
-use pyo3::prelude::*;
-
 use std::fmt;
 
 // ==================== CORE STRUCTURES =================
 // MARK: Position
-#[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Position {
-    #[pyo3(get)]
-    line: i64,
-    #[pyo3(get)]
-    column: i64,
+    pub line: i64,
+    pub column: i64,
 }
 
 impl fmt::Display for Position {
@@ -37,20 +32,21 @@ impl fmt::Display for Position {
     }
 }
 
-#[pymethods]
 impl Position {
-    #[new]
-    pub fn new(line: i64, column: i64) -> Self { Self { line, column } }
-    pub fn __repr__(&self) -> String { format!("{}", self) }
+    pub fn new(line: i64, column: i64) -> Self {
+        Self { line, column }
+    }
+
+    pub fn debug(&self) -> String {
+        format!("{}", self)
+    }
 }
+
 // MARK: Span
-#[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Span {
-    #[pyo3(get)]
-    start: Position,
-    #[pyo3(get)]
-    end: Position,
+    pub start: Position,
+    pub end: Position,
 }
 
 impl fmt::Display for Span {
@@ -59,20 +55,21 @@ impl fmt::Display for Span {
     }
 }
 
-#[pymethods]
 impl Span {
-    #[new]
-    pub fn new(start: Position, end: Position) -> Self { Self { start, end } }
-    pub fn __repr__(&self) -> String { format!("{}", self) }
+    pub fn new(start: Position, end: Position) -> Self {
+        Self { start, end }
+    }
+
+    pub fn debug(&self) -> String {
+        format!("{}", self)
+    }
 }
+
 // MARK: Identifier
-#[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Identifier {
-    #[pyo3(get)]
-    id: String,
-    #[pyo3(get)]
-    span: Span,
+    pub id: String,
+    pub span: Span,
 }
 
 impl fmt::Display for Identifier {
@@ -81,250 +78,285 @@ impl fmt::Display for Identifier {
     }
 }
 
-#[pymethods]
 impl Identifier {
-    #[new]
-    pub fn new(id: String, span: Span) -> Self { Self { id, span } }
-    pub fn __repr__(&self) -> String { format!("{}", self.id) }
-}
-// MARK: ERROR
-#[pyclass]
-#[derive(Clone)]
-pub struct Error {
-    #[pyo3(get)]
-    message: String,
-    #[pyo3(get)]
-    span: Span,
-}
-
-#[pymethods]
-impl Error {
-    #[new]
-    pub fn new(message: String, span: Span) -> Self {
-        Error { message, span }
+    pub fn new(id: String, span: Span) -> Self {
+        Self { id, span }
     }
 
-    pub fn __repr__(&self) -> String {
+    pub fn debug(&self) -> String {
+        format!("{}", self.id)
+    }
+
+    pub fn render(&self) -> String {
+        format!("{}", self.id)
+    }
+}
+
+// MARK: Error
+#[derive(Clone, Debug)]
+pub struct Error {
+    pub message: String,
+    pub span: Span,
+}
+
+impl Error {
+    pub fn new(message: String, span: Span) -> Self {
+        Self { message, span }
+    }
+
+    pub fn debug(&self) -> String {
         format!("Error('{}')", self.message)
     }
-}
-// MARK: Float
-#[pyclass]
-#[derive(Clone)]
-pub struct Float {
-    #[pyo3(get)]
-    value: String,
-    #[pyo3(get)]
-    span: Span,
+
+    //pub fn render(&self) -> Result<String, Box<dyn std::error::Error>> {  // TODO: choose the best way of handling this
+    //    Err(Box::new(self.clone()))
+    //}
 }
 
-#[pymethods]
+// MARK: Float
+#[derive(Clone, Debug)]
+pub struct Float {
+    pub value: String,
+    pub span: Span,
+}
+
 impl Float {
-    #[new]
     pub fn new(value: String, span: Span) -> Self {
-        Float { value, span }
+        Self { value, span }
     }
 
-    pub fn __repr__(&self) -> String {
+    pub fn debug(&self) -> String {
         format!("Float('{}')", self.value)
     }
-}
-// MARK: Integer
-#[pyclass]
-#[derive(Clone)]
-pub struct Integer {
-    #[pyo3(get)]
-    value: String,
-    #[pyo3(get)]
-    span: Span,
+
+    pub fn render(&self) -> String {
+        format!("{}", self.value)
+    }
 }
 
-#[pymethods]
+// MARK: Integer
+#[derive(Clone, Debug)]
+pub struct Integer {
+    pub value: String,
+    pub span: Span,
+}
+
 impl Integer {
-    #[new]
     pub fn new(value: String, span: Span) -> Self {
-        Integer { value, span }
+        Self { value, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("Integer('{}')", self.value)
+    }
+
+    pub fn render(&self) -> String {
+        format!("{}", self.value)
     }
 }
 
 // ==================== OPERATORS ====================
 // MARK: OPERATORS
 macro_rules! impl_operator {
-    ($($name:ident),+) => {
+    ($( $name:ident => $render:expr ),+ $(,)?) => {
         $(
-            #[pyclass]
-            #[derive(Clone, Copy)]
+            #[derive(Clone, Copy, Debug)]
             pub struct $name;
-            #[pymethods]
+
             impl $name {
-                #[new] pub fn new() -> Self { Self }
-                #[classattr] pub fn value() -> &'static str { stringify!($name) }
-                pub fn __repr__(&self) -> String { format!("{}", stringify!($name)) }
+                pub fn value() -> &'static str {
+                    stringify!($name)
+                }
+
+                pub fn debug(&self) -> String {
+                    format!("{}", stringify!($name))
+                }
+
+                pub fn render(&self) -> String {
+                    $render.to_string()
+                }
             }
         )+
     };
 }
 
 impl_operator!(
-    Addition, Concatenation, EqualTo, GreaterThan, GreaterThanOrEqualTo, Division,
-    Implication, LessThan, LessThanOrEqualTo, LogicalAnd, LogicalOr, Multiplication,
-    NotEqualTo, Subtraction, Update, Not, Negate
+    Addition => "+",
+    Subtraction => "-",
+    Multiplication => "*",
+    Division => "/",
+    EqualTo => "==",
+    NotEqualTo => "!=",
+    GreaterThan => ">",
+    GreaterThanOrEqualTo => ">=",
+    LessThan => "<",
+    LessThanOrEqualTo => "<=",
+    LogicalAnd => "&&",
+    LogicalOr => "||",
+    Not => "!",
+    Negate => "-",
+    Concatenation => "++",
+    Implication => "=>",
+    Update => ":=",
 );
+
+#[derive(Clone, Debug)]
+pub enum Operator {
+    Addition(Addition), Concatenation(Concatenation), EqualTo(EqualTo), GreaterThan(GreaterThan), GreaterThanOrEqualTo(GreaterThanOrEqualTo), Division(Division),
+    Implication(Implication), LessThan(LessThan), LessThanOrEqualTo(LessThanOrEqualTo), LogicalAnd(LogicalAnd), LogicalOr(LogicalOr), Multiplication(Multiplication),
+    NotEqualTo(NotEqualTo), Subtraction(Subtraction), Update(Update), Not(Not), Negate(Negate)    
+}
+
+impl Operator {
+    pub fn render(&self) -> String {
+        match self {
+            Operator::Addition(x) => x.render(), 
+            Operator::Concatenation(x) => x.render(),
+            Operator::EqualTo(x) => x.render(),
+            Operator::GreaterThan(x) => x.render(),
+            Operator::GreaterThanOrEqualTo(x) => x.render(),
+            Operator::Division(x) => x.render(),
+            Operator::Implication(x) => x.render(),
+            Operator::LessThan(x) => x.render(),
+            Operator::LessThanOrEqualTo(x) => x.render(),
+            Operator::LogicalAnd(x) => x.render(),
+            Operator::LogicalOr(x) => x.render(),
+            Operator::Multiplication(x) => x.render(),
+            Operator::NotEqualTo(x) => x.render(),
+            Operator::Subtraction(x) => x.render(),
+            Operator::Update(x) => x.render(),
+            Operator::Not(x) => x.render(),
+            Operator::Negate(x) => x.render()
+        }
+    }
+}
 
 // ==================== FUNCTION STRUCTURES ====================
 // MARK: FunctionHeadDestructuredArgument
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct FunctionHeadDestructuredArgument {
-    #[pyo3(get)]
-    identifier: String,
-    #[pyo3(get)]
-    default: Option<PyObject>,
+    pub identifier: String,
+    pub default: Option<Expression>,
 }
 
-impl Clone for FunctionHeadDestructuredArgument {
-    fn clone(&self) -> Self {
-        // Acquire the GIL token
-        Python::with_gil(|py| {
-            Self {
-                identifier: self.identifier.clone(),
-                default: self.default.as_ref().map(|py_any| py_any.clone_ref(py)),  // Pass `py` to clone_ref
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl FunctionHeadDestructuredArgument {
-    #[new]
-    pub fn new(identifier: String, default: Option<PyObject>) -> Self {
-        FunctionHeadDestructuredArgument { identifier, default }
+    pub fn new(identifier: String, default: Option<Expression>) -> Self {
+        Self { identifier, default }
     }
 
-    pub fn __repr__(&self) -> String {
+    pub fn debug(&self) -> String {
         format!(
             "FunctionHeadDestructuredArgument(identifier='{}', default={:?})",
             self.identifier, self.default
         )
     }
+
+    pub fn render(&self) -> String {
+        match &self.default {
+            Some(expr) => format!("{} ? {:?}", self.identifier, expr.render()),
+            None => self.identifier.clone(),
+        }
+    }
 }
-// MARK: FunctionHeadDestructured
-#[pyclass]
-#[derive(Clone)]
+
+#[derive(Clone, Debug)]
 pub struct FunctionHeadDestructured {
-    #[pyo3(get)]
-    ellipsis: bool,
-    #[pyo3(get)]
-    identifier: Identifier,
-    #[pyo3(get)]
-    arguments: FunctionHeadDestructuredArgument,
-    #[pyo3(get)]
-    span: Span,
+    pub ellipsis: bool,
+    pub identifier: Identifier,
+    pub arguments: Vec<FunctionHeadDestructuredArgument>,
+    pub span: Span,
 }
 
-#[pymethods]
 impl FunctionHeadDestructured {
-    #[new]
-    pub fn new(ellipsis: bool, identifier: Identifier, arguments: FunctionHeadDestructuredArgument, span: Span) -> Self {
-        Self { ellipsis, identifier, arguments, span }
-    }
-    pub fn __repr__(&self) -> String {
-        format!("FunctionHeadDestructured(ellipsis={})", self.ellipsis)
-    }
-}
-// MARK: FunctionHeadSimple
-#[pyclass]
-#[derive(Clone)]
-pub struct FunctionHeadSimple {
-    #[pyo3(get)]
-    identifier: Identifier,
-    #[pyo3(get)]
-    span: Span,
-}
-
-#[pymethods]
-impl FunctionHeadSimple {
-    #[new]
-    pub fn new(identifier: Identifier, span: Span) -> Self {
-        FunctionHeadSimple { identifier, span }
-    }
-
-    pub fn __repr__(&self) -> String {
-        format!("FunctionHeadSimple(identifier={}, span={})", self.identifier, self.span)
-    }
-}
-// MARK: Function
-#[pyclass]
-pub struct Function {
-    #[pyo3(get)]
-    head: PyObject,
-    #[pyo3(get)]
-    body: PyObject,
-    #[pyo3(get)]
-    span: Span,
-}
-
-impl Clone for Function {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                head: self.head.clone_ref(py),  // Use clone_ref with the GIL token
-                body: self.body.clone_ref(py),  // Use clone_ref with the GIL token
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
-impl Function {
-    #[new]
-    pub fn new(head: PyObject, body: PyObject, span: Span) -> Self {
-        Function { head, body, span }
-    }
-    pub fn __repr__(&self) -> String {
-        format!("Function({:?}, {:?})", self.head, self.body)
-    }
-}
-
-// MARK: FunctionApplication
-#[pyclass] 
-pub struct FunctionApplication {
-    #[pyo3(get)]
-    function: PyObject,  
-    #[pyo3(get)]
-    arguments: PyObject,  
-    #[pyo3(get)]
-    span: Span,
-}
-
-impl Clone for FunctionApplication {
-    fn clone(&self) -> Self {
-        // Acquire the GIL token
-        Python::with_gil(|py| {
-            Self {
-                function: self.function.clone_ref(py), 
-                arguments: self.arguments.clone_ref(py),  
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
-impl FunctionApplication {
-    #[new]
-    pub fn new(function: PyObject, arguments: PyObject, span: Span) -> Self {
-        FunctionApplication {
-            function,
+    pub fn new(
+        ellipsis: bool,
+        identifier: Identifier,
+        arguments: Vec<FunctionHeadDestructuredArgument>,
+        span: Span,
+    ) -> Self {
+        Self {
+            ellipsis,
+            identifier,
             arguments,
             span,
         }
     }
 
-    pub fn __repr__(&self) -> String {
+    pub fn debug(&self) -> String {
+        format!("FunctionHeadDestructured(ellipsis={})", self.ellipsis)
+    }
+
+    pub fn render(&self) -> String {
+        let mut result: String = String::new();
+        for argument in &self.arguments {
+            result.push_str(&argument.render())
+        }
+        result
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionHeadSimple {
+    pub identifier: Identifier,
+    pub span: Span,
+}
+
+impl FunctionHeadSimple {
+    pub fn new(identifier: Identifier, span: Span) -> Self {
+        Self { identifier, span }
+    }
+
+    pub fn debug(&self) -> String {
+        format!(
+            "FunctionHeadSimple(identifier={}, span={})",
+            self.identifier, self.span
+        )
+    }
+}
+
+enum FunctionHead {
+    FunctionHead,
+    FunctionHeadDestructured
+}
+
+#[derive(Clone, Debug)]
+pub struct Function {
+    pub head: Box<Expression>,
+    pub body: Box<Expression>,
+    pub span: Span,
+}
+
+impl Function {
+    pub fn new(head: Expression, body: Expression, span: Span) -> Self {
+        Self {
+            head: Box::new(head),
+            body: Box::new(body),
+            span,
+        }
+    }
+
+    pub fn debug(&self) -> String {
+        format!("Function({:?}, {:?})", self.head, self.body)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionApplication {
+    pub function: Box<Expression>,
+    pub arguments: Vec<Expression>,
+    pub span: Span,
+}
+
+impl FunctionApplication {
+    pub fn new(function: Expression, arguments: Vec<Expression>, span: Span) -> Self {
+        Self {
+            function: Box::new(function),
+            arguments,
+            span,
+        }
+    }
+
+    pub fn debug(&self) -> String {
         format!(
             "FunctionApplication(function={:?}, arguments={:?})",
             self.function, self.arguments
@@ -334,592 +366,473 @@ impl FunctionApplication {
 
 // ==================== PARTS ====================
 // MARK: PartInterpolation
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct PartInterpolation {
-    #[pyo3(get)]
-    expression: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub expression: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for PartInterpolation {
-    fn clone(&self) -> Self {
-        // Acquire the GIL token
-        Python::with_gil(|py| {
-            Self {
-                expression: self.expression.clone_ref(py), 
-                span: self.span.clone()
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl PartInterpolation {
-    #[new]
-    pub fn new(expression: PyObject, span: Span) -> Self {
-        PartInterpolation { expression, span }
+    pub fn new(expression: Box<Expression>, span: Span) -> Self {
+        Self { expression, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("PartInterpolation({:?})", self.expression)
     }
 }
+
 // MARK: PartRaw
-#[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PartRaw {
-    #[pyo3(get)]
-    content: String,
-    #[pyo3(get)]
-    span: Span,
+    pub content: String,
+    pub span: Span,
 }
 
-#[pymethods]
 impl PartRaw {
-    #[new]
     pub fn new(content: String, span: Span) -> Self {
-        PartRaw { content, span }
+        Self { content, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("PartRaw('{}')", self.content)
     }
 }
 
 // ==================== EXPRESSIONS ====================
 // MARK: BinaryOperation
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct BinaryOperation {
-    #[pyo3(get)]
-    left: PyObject,
-    #[pyo3(get)]
-    operator: PyObject,
-    #[pyo3(get)]
-    right: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub left: Box<Expression>,
+    pub operator: Operator,
+    pub right: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for BinaryOperation {
-    fn clone(&self) -> Self {
-        // Acquire the GIL token
-        Python::with_gil(|py| {
-            Self {
-                left: self.left.clone_ref(py),  
-                operator: self.operator.clone_ref(py),  
-                right: self.operator.clone_ref(py),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl BinaryOperation {
-    #[new]
-    pub fn new(left: PyObject, operator: PyObject, right: PyObject, span: Span) -> Self {
-        Self { left, operator, right, span }
+    pub fn new(left: Expression, operator: Operator, right: Expression, span: Span) -> Self {
+        Self {
+            left: Box::new(left),
+            operator,
+            right: Box::new(right),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("BinaryOperation({:?}, {:?}, {:?})", self.left, self.operator, self.right)
     }
 }
+
 // MARK: Assert
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct Assert {
-    #[pyo3(get)]
-    expression: PyObject,
-    #[pyo3(get)]
-    target: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub expression: Box<Expression>,
+    pub target: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for Assert {
-    fn clone(&self) -> Self {
-        // Acquire the GIL token
-        Python::with_gil(|py| {
-            Self {
-                expression: self.expression.clone_ref(py),  
-                target: self.target.clone_ref(py),  
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl Assert {
-    #[new]
-    pub fn new(expression: PyObject, target: PyObject, span: Span) -> Self {
-        Self { expression, target, span }
+    pub fn new(expression: Expression, target: Expression, span: Span) -> Self {
+        Self {
+            expression: Box::new(expression),
+            target: Box::new(target),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("Assert(expr={:?}, target={:?})", self.expression, self.target)
     }
 }
 
 // ==================== EXPRESSIONS ====================
 // MARK: HasAttribute
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct HasAttribute {
-    #[pyo3(get)]
-    expression: PyObject,
-    #[pyo3(get)]
-    attribute_path: Vec<PyObject>,
-    #[pyo3(get)]
-    span: Span,
+    pub expression: Box<Expression>,
+    pub attribute_path: Vec<Expression>,
+    pub span: Span,
 }
 
-impl Clone for HasAttribute {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                expression: self.expression.clone_ref(py),
-                attribute_path: self.attribute_path.iter().map(|x| x.clone_ref(py)).collect(),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl HasAttribute {
-    #[new]
-    pub fn new(expression: PyObject, attribute_path: Vec<PyObject>, span: Span) -> Self {
-        HasAttribute { expression, attribute_path, span }
+    pub fn new(expression: Expression, attribute_path: Vec<Expression>, span: Span) -> Self {
+        Self {
+            expression: Box::new(expression),
+            attribute_path,
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("HasAttribute({:?})", self.attribute_path)
     }
 }
 
 // MARK: IndentedString
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct IndentedString {
-    #[pyo3(get)]
-    parts: Vec<PyObject>,
-    #[pyo3(get)]
-    span: Span,
+    pub parts: Vec<Expression>,
+    pub span: Span,
 }
 
-impl Clone for IndentedString {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                parts: self.parts.iter().map(|x| x.clone_ref(py)).collect(),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl IndentedString {
-    #[new]
-    pub fn new(parts: Vec<PyObject>, span: Span) -> Self {
-        IndentedString { parts, span }
+    pub fn new(parts: Vec<Expression>, span: Span) -> Self {
+        Self { parts, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("IndentedString({:?})", self.parts)
     }
 }
+
 // MARK: IfThenElse
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct IfThenElse {
-    #[pyo3(get)]
-    predicate: PyObject,
-    #[pyo3(get)]
-    then: PyObject,
-    #[pyo3(get)]
-    else_: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub predicate: Box<Expression>,
+    pub then: Box<Expression>,
+    pub else_: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for IfThenElse {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                predicate: self.predicate.clone_ref(py),
-                then: self.then.clone_ref(py),
-                else_: self.else_.clone_ref(py),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl IfThenElse {
-    #[new]
-    pub fn new(predicate: PyObject, then: PyObject, else_: PyObject, span: Span) -> Self {
-        Self { predicate, then, else_, span }
+    pub fn new(predicate: Expression, then: Expression, else_: Expression, span: Span) -> Self {
+        Self {
+            predicate: Box::new(predicate),
+            then: Box::new(then),
+            else_: Box::new(else_),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String { format!("IfThenElse({}, {}, {})", self.predicate, self.then, self.else_) }
+
+    pub fn debug(&self) -> String {
+        format!("IfThenElse({:?}, {:?}, {:?})", self.predicate, self.then, self.else_)
+    }
 }
+
 // MARK: LetIn
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct LetIn {
-    #[pyo3(get)]
-    bindings: Vec<PyObject>,
-    #[pyo3(get)]
-    target: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub bindings: Vec<Expression>,
+    pub target: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for LetIn {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                bindings: self.bindings.iter().map(|x| x.clone_ref(py)).collect(),
-                target: self.target.clone_ref(py),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl LetIn {
-    #[new]
-    pub fn new(bindings: Vec<PyObject>, target: PyObject, span: Span) -> Self {
-        Self { bindings, target, span }
+    pub fn new(bindings: Vec<Expression>, target: Expression, span: Span) -> Self {
+        Self {
+            bindings,
+            target: Box::new(target),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String { format!("LetIn({:?})", self.bindings) }
+
+    pub fn debug(&self) -> String {
+        format!("LetIn({:?})", self.bindings)
+    }
 }
 
 // ==================== COLLECTIONS ====================
 // MARK: List
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct List {
-    #[pyo3(get)]
-    elements: Vec<PyObject>,
-    #[pyo3(get)]
-    span: Span,
+    pub elements: Vec<Expression>,
+    pub span: Span,
 }
 
-impl Clone for List {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                elements: self.elements.iter().map(|x| x.clone_ref(py)).collect(),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl List {
-    #[new]
-    pub fn new(elements: Vec<PyObject>, span: Span) -> Self {
-        List { elements, span }
+    pub fn new(elements: Vec<Expression>, span: Span) -> Self {
+        Self { elements, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("List({:?})", self.elements)
     }
 }
+
 // MARK: Map
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct Map {
-    #[pyo3(get)]
-    recursive: bool,
-    #[pyo3(get)]
-    bindings: Vec<PyObject>,
-    #[pyo3(get)]
-    span: Span,
+    pub recursive: bool,
+    pub bindings: Vec<Expression>,
+    pub span: Span,
 }
 
-impl Clone for Map {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                recursive: self.recursive,
-                bindings: self.bindings.iter().map(|x| x.clone_ref(py)).collect(),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl Map {
-    #[new]
-    pub fn new(recursive: bool, bindings: Vec<PyObject>, span: Span) -> Self {
-        Map { recursive, bindings, span }
+    pub fn new(recursive: bool, bindings: Vec<Expression>, span: Span) -> Self {
+        Self { recursive, bindings, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("Map(recursive={}, {:?})", self.recursive, self.bindings)
     }
 }
 
 // ==================== PATH & URI ====================
 // MARK: Path
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct Path {
-    #[pyo3(get)]
-    parts: Vec<PyObject>,
-    #[pyo3(get)]
-    span: Span,
+    pub parts: Vec<Expression>,
+    pub span: Span,
 }
 
-impl Clone for Path {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                parts: self.parts.iter().map(|x| x.clone_ref(py)).collect(),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl Path {
-    #[new]
-    pub fn new(parts: Vec<PyObject>, span: Span) -> Self {
-        Path { parts, span }
+    pub fn new(parts: Vec<Expression>, span: Span) -> Self {
+        Self { parts, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("Path({:?})", self.parts)
     }
 }
+
 // MARK: Uri
-#[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Uri {
-    #[pyo3(get)]
-    uri: String,
-    #[pyo3(get)]
-    span: Span,
+    pub uri: String,
+    pub span: Span,
 }
 
-#[pymethods]
 impl Uri {
-    #[new]
     pub fn new(uri: String, span: Span) -> Self {
-        Uri { uri, span }
+        Self { uri, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("Uri('{}')", self.uri)
     }
 }
 
 // ==================== PROPERTY ACCESS ====================
-// MARK: PropertieAccess
-#[pyclass]
+// MARK: PropertyAccess
+#[derive(Clone, Debug)]
 pub struct PropertyAccess {
-    #[pyo3(get)]
-    expression: PyObject,
-    #[pyo3(get)]
-    attribute_path: Vec<PyObject>,
-    #[pyo3(get)]
-    default: Option<PyObject>,
-    #[pyo3(get)]
-    span: Span,
+    pub expression: Box<Expression>,
+    pub attribute_path: Vec<Expression>,
+    pub default: Option<Box<Expression>>,
+    pub span: Span,
 }
 
-impl Clone for PropertyAccess {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                expression: self.expression.clone_ref(py),
-                attribute_path: self.attribute_path.iter().map(|x| x.clone_ref(py)).collect(),
-                default: self.default.as_ref().map(|x| x.clone_ref(py)),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl PropertyAccess {
-    #[new]
-    pub fn new(expression: PyObject, attribute_path: Vec<PyObject>, default: Option<PyObject>, span: Span) -> Self {
-        PropertyAccess { expression, attribute_path, default, span }
+    pub fn new(
+        expression: Expression,
+        attribute_path: Vec<Expression>,
+        default: Option<Expression>,
+        span: Span,
+    ) -> Self {
+        Self {
+            expression: Box::new(expression),
+            attribute_path,
+            default: default.map(Box::new),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String {
-        format!("PropertyAccess({:?}, {:?}, {:?})", self.expression, self.attribute_path, self.default)
+
+    pub fn debug(&self) -> String {
+        format!(
+            "PropertyAccess(expr={:?}, path={:?}, default={:?})",
+            self.expression, self.attribute_path, self.default
+        )
     }
 }
 
 // ==================== REMAINING TYPES ====================
 // MARK: SearchNixPath
-#[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SearchNixPath {
-    #[pyo3(get)]
-    path: String,
-    #[pyo3(get)]
-    span: Span,
+    pub path: String,
+    pub span: Span,
 }
 
-#[pymethods]
 impl SearchNixPath {
-    #[new]
     pub fn new(path: String, span: Span) -> Self {
-        SearchNixPath { path, span }
+        Self { path, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("SearchNixPath('{}')", self.path)
     }
 }
 
 // MARK: NixString
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct NixString {
-    #[pyo3(get)]
-    parts: Vec<PyObject>,
-    #[pyo3(get)]
-    span: Span,
+    pub parts: Vec<Expression>,
+    pub span: Span,
 }
 
-impl Clone for NixString {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                parts: self.parts.iter().map(|x| x.clone_ref(py)).collect(),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl NixString {
-    #[new]
-    pub fn new(parts: Vec<PyObject>, span: Span) -> Self {
-        NixString { parts, span }
+    pub fn new(parts: Vec<Expression>, span: Span) -> Self {
+        Self { parts, span }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("String({:?})", self.parts)
     }
 }
+
 // MARK: UnaryOperation
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct UnaryOperation {
-    #[pyo3(get)]
-    operator: PyObject,
-    #[pyo3(get)]
-    operand: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub operator: Operator,
+    pub operand: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for UnaryOperation {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                operator: self.operator.clone_ref(py),
-                operand: self.operand.clone_ref(py),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl UnaryOperation {
-    #[new]
-    pub fn new(operator: PyObject, operand: PyObject, span: Span) -> Self {
-        UnaryOperation { operator, operand, span }
+    pub fn new(operator: Operator, operand: Expression, span: Span) -> Self {
+        Self {
+            operator,
+            operand: Box::new(operand),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("UnaryOperation({:?})", self.operator)
     }
 }
+
 // MARK: With
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct With {
-    #[pyo3(get)]
-    expression: PyObject,
-    #[pyo3(get)]
-    target: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub expression: Box<Expression>,
+    pub target: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for With {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                expression: self.expression.clone_ref(py),
-                target: self.target.clone_ref(py),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl With {
-    #[new]
-    pub fn new(expression: PyObject, target: PyObject, span: Span) -> Self {
-        With { expression, target, span }
+    pub fn new(expression: Expression, target: Expression, span: Span) -> Self {
+        Self {
+            expression: Box::new(expression),
+            target: Box::new(target),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String {
+
+    pub fn debug(&self) -> String {
         format!("With({:?})", self.expression)
     }
 }
 
 // ==================== BINDINGS ====================
 // MARK: BindingInherit
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct BindingInherit {
-    #[pyo3(get)]
-    from_: Option<PyObject>,
-    #[pyo3(get)]
-    attributes: PyObject,
-    #[pyo3(get)]
-    span: Span,
+    pub from_: Option<Box<Expression>>,
+    pub attributes: Box<Expression>,
+    pub span: Span,
 }
 
-impl Clone for BindingInherit {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                from_: self.from_.as_ref().map(|x| x.clone_ref(py)),
-                attributes: self.attributes.clone_ref(py),
-                span: self.span.clone(),
-            }
-        })
-    }
-}
-
-#[pymethods]
 impl BindingInherit {
-    #[new]
-    pub fn new(from_: Option<PyObject>, attributes: PyObject, span: Span) -> Self {
-        BindingInherit { from_, attributes, span }
+    pub fn new(from_: Option<Expression>, attributes: Expression, span: Span) -> Self {
+        Self {
+            from_: from_.map(Box::new),
+            attributes: Box::new(attributes),
+            span,
+        }
     }
-    pub fn __repr__(&self) -> String {
-        format!("BindingInherit(from={:?})", self.from_.is_some())
+
+    pub fn debug(&self) -> String {
+        format!("BindingInherit(from={})", self.from_.is_some())
     }
 }
+
 // MARK: BindingKeyValue
-#[pyclass]
+#[derive(Clone, Debug)]
 pub struct BindingKeyValue {
-    #[pyo3(get)]
-    from_: PyObject,
-    #[pyo3(get)]
-    to: PyObject,
+    pub from_: Box<Expression>,
+    pub to: Box<Expression>,
 }
 
-impl Clone for BindingKeyValue {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| {
-            Self {
-                from_: self.from_.clone_ref(py),
-                to: self.to.clone_ref(py),
-            }
-        })
+impl BindingKeyValue {
+    pub fn new(from_: Expression, to: Expression) -> Self {
+        Self {
+            from_: Box::new(from_),
+            to: Box::new(to),
+        }
+    }
+
+    pub fn debug(&self) -> String {
+        format!("KeyValue({:?})", self.from_)
     }
 }
 
-#[pymethods]
-impl BindingKeyValue {
-    #[new]
-    pub fn new(from_: PyObject, to: PyObject) -> Self { Self { from_, to } }
-    pub fn __repr__(&self) -> String { format!("KeyValue({:?})", self.from_) }
+#[derive(Clone, Debug)]
+pub enum Expression {
+    // Core literals
+    Integer(Integer),
+    Float(Float),
+    Identifier(Identifier),
+    Error(Error),
+
+    // Operators
+    UnaryOperation(UnaryOperation),
+    BinaryOperation(BinaryOperation),
+
+    // Control flow
+    IfThenElse(IfThenElse),
+    Assert(Assert),
+    With(With),
+    LetIn(LetIn),
+
+    // Collections
+    List(List),
+    Map(Map),
+
+    // Paths and URIs
+    Path(Path),
+    Uri(Uri),
+    SearchNixPath(SearchNixPath),
+
+    // Strings
+    NixString(NixString),
+    IndentedString(IndentedString),
+    PartRaw(PartRaw),
+    PartInterpolation(PartInterpolation),
+
+    // Property access
+    PropertyAccess(PropertyAccess),
+    HasAttribute(HasAttribute),
+
+    // Functions
+    Function(Function),
+    FunctionApplication(FunctionApplication),
+
+    // Bindings
+    BindingInherit(BindingInherit),
+    BindingKeyValue(BindingKeyValue),
+}
+
+impl Expression {
+    pub fn render(&self) -> String {
+        match self {
+            Expression::Integer(x) => x.render(),
+            Expression::Float(x) => x.render(),
+            Expression::Identifier(x) => x.render(),
+            // Expression::Error(x) => x.render(),
+            // Expression::UnaryOperation(x) => x.render(),
+            // Expression::BinaryOperation(x) => x.render(),
+            // Expression::IfThenElse(x) => x.render(),
+            // Expression::Assert(x) => x.render(),
+            // Expression::With(x) => x.render(),
+            // Expression::LetIn(x) => x.render(),
+            // Expression::List(x) => x.render(),
+            // Expression::Map(x) => x.render(),
+            // Expression::Path(x) => x.render(),
+            // Expression::Uri(x) => x.render(),
+            // Expression::SearchNixPath(x) => x.render(),
+            // Expression::NixString(x) => x.render(),
+            // Expression::IndentedString(x) => x.render(),
+            // Expression::PartRaw(x) => x.render(),
+            // Expression::PartInterpolation(x) => x.render(),
+            // Expression::PropertyAccess(x) => x.render(),
+            // Expression::HasAttribute(x) => x.render(),
+            // Expression::Function(x) => x.render(),
+            // Expression::FunctionApplication(x) => x.render(),
+            // Expression::BindingInherit(x) => x.render(),
+            // Expression::BindingKeyValue(x) => x.render(),
+            _ => String::from("")
+        }
+    }
 }
