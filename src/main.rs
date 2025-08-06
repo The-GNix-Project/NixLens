@@ -16,22 +16,24 @@
 // along with GNix.  If not, see <https://www.gnu.org/licenses/>.                           |
 // -----------------------------------------------------------------------------------------|
 
+use parser::grammar::RenderError;
+
 mod parser;
 
-fn main() {
+fn main() ->Result<(), RenderError> {
     use parser::grammar::*;
     
     // Test Integer
     let int_expr = Expression::Integer(Integer::new("42".to_string()));
-    println!("Integer render: {}", int_expr.render());
+    println!("Integer render: {}", int_expr.render()?);
 
     // Test Float
     let float_expr = Expression::Float(Float::new("3.14".to_string()));
-    println!("Float render: {}", float_expr.render());
+    println!("Float render: {}", float_expr.render()?);
 
     // Test Identifier
     let id_expr = Expression::Identifier(Identifier::new("myVar".to_string()));
-    println!("Identifier render: {}", id_expr.render());
+    println!("Identifier render: {}", id_expr.render()?);
 
     // Test Operators directly
     let add_op = Operator::Addition(Addition);
@@ -44,5 +46,6 @@ fn main() {
     println!("Not operator render: {}", not_op.render());
 
     let struc_func_head = FunctionHeadDestructuredArgument::new(String::from("name"), Some(Expression::Integer(Integer::new(2.to_string()))));
-    println!("Structured Function Head render: {}", struc_func_head.render())
+    println!("Structured Function Head render: {}", struc_func_head.render());
+    Ok(())
 }

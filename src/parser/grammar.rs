@@ -20,6 +20,25 @@
 
 use std::fmt;
 
+#[derive(Debug)]
+pub enum RenderError {
+    InvalidNode(String),
+    UnexpectedError(String),
+    InvalidAst(String)
+}
+
+impl fmt::Display for RenderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RenderError::InvalidNode(msg) => write!(f, "Invalid node: {}", msg),
+            RenderError::UnexpectedError(msg) => write!(f, "Unexpected render error: {}", msg),
+            RenderError::InvalidAst(msg) => write!(f, "Invalid AST: {}", msg)
+        }
+    }
+}
+
+impl std::error::Error for RenderError {}
+
 // ==================== CORE STRUCTURES =================
 // MARK: Position
 #[derive(Clone, Debug)]
@@ -373,6 +392,10 @@ impl FunctionHeadSimple {
         }
     }
 
+    pub fn render(&self) -> String {
+        self.identifier.render()
+    }
+
     pub fn debug(&self) -> String {
         format!(
             "FunctionHeadSimple(identifier={}, span={})",
@@ -387,6 +410,13 @@ enum FunctionHead {
 }
 
 impl FunctionHead {
+    pub fn render(&self) -> String {
+        match self {
+            FunctionHead::FunctionHeadSimple(f) => f.render(),
+            FunctionHead::FunctionHeadDestructured(f) => f.render(),
+        }
+    }
+
     pub fn debug(&self) -> String {
         match self {
             FunctionHead::FunctionHeadSimple(x) => x.debug(),
@@ -419,6 +449,12 @@ impl Function {
         }
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        let head = self.head.render()?; 
+        let body = self.body.render()?; 
+        Ok(format!("{}: {}", head, body))
+    }
+
     pub fn debug(&self) -> String {
         format!("Function({:?}, {:?})", self.head, self.body)
     }
@@ -446,6 +482,16 @@ impl FunctionApplication {
             arguments,
             span: Span::new(Position::new(1, 1), Position::new(1, 1)),
         }
+    }
+
+    pub fn render(&self) -> Result<String, RenderError> {
+        let args = self
+            .arguments
+            .iter()
+            .map(|a| a.render())
+            .collect::<Result<Vec<_>, _>>()?;
+        let function = self.function.render()?;
+        Ok(format!("{} {}", function, args.join(" ")))
     }
 
     pub fn debug(&self) -> String {
@@ -479,6 +525,11 @@ impl PartInterpolation {
         }
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        let expression = self.expression.render()?;
+        Ok(format!("${{{}}}", expression))
+    }
+
     pub fn debug(&self) -> String {
         format!("PartInterpolation({:?})", self.expression)
     }
@@ -501,6 +552,10 @@ impl PartRaw {
             content,
             span: Span::new(Position::new(1, 1), Position::new(1, 1)),
         }
+    }
+
+    pub fn render(&self) -> String {
+        self.content.clone()
     }
 
     pub fn debug(&self) -> String {
@@ -537,6 +592,12 @@ impl BinaryOperation {
         )
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        let left = self.left.render()?; 
+        let right = self.right.render()?;
+        Ok(format!("({} {} {})", left, self.operator.render(), right))
+    }
+
     pub fn debug(&self) -> String {
         format!(
             "BinaryOperation({:?}, {:?}, {:?})",
@@ -568,6 +629,12 @@ impl Assert {
             target,
             Span::new(Position::new(1, 1), Position::new(1, 1)),
         )
+    }
+
+    pub fn render(&self) -> Result<String, RenderError> {
+        let expression = self.expression.render()?;
+        let target = self.expression.render()?;
+        Ok(format!("assert {} == {}", expression, target))
     }
 
     pub fn debug(&self) -> String {
@@ -604,6 +671,21 @@ impl HasAttribute {
         )
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        let expression = self.expression.render()?;
+
+        let path_parts = self
+            .attribute_path
+            .iter()
+            .map(|e| e.render())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let path = path_parts.join(".");
+
+        Ok(format!("{}.{}", expression, path))
+    }
+
+
     pub fn debug(&self) -> String {
         format!("HasAttribute({:?})", self.attribute_path)
     }
@@ -623,6 +705,14 @@ impl IndentedString {
 
     pub fn new(parts: Vec<Expression>) -> Self {
         Self::new_span(parts, Span::new(Position::new(1, 1), Position::new(1, 1)))
+    }
+
+    pub fn render(&self) -> Result<String, RenderError> {
+        Ok(self.parts
+            .iter()
+            .map(|p| p.render())
+            .collect::<Result<Vec<_>, _>>()?
+            .join(""))
     }
 
     pub fn debug(&self) -> String {
@@ -663,6 +753,15 @@ impl IfThenElse {
         )
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        Ok(format!(
+            "if {} then {} else {}",
+            self.predicate.render()?,
+            self.then.render()?,
+            self.else_.render()?
+        ))
+    }
+
     pub fn debug(&self) -> String {
         format!(
             "IfThenElse({:?}, {:?}, {:?})",
@@ -696,8 +795,13 @@ impl LetIn {
         )
     }
 
-    pub fn debug(&self) -> String {
-        format!("LetIn({:?})", self.bindings)
+    pub fn render(&self) -> Result<String, RenderError> {
+        let bindings_str = self.bindings
+            .iter()
+            .map(|b| b.render())
+            .collect::<Result<Vec<_>, _>>()?
+            .join(" ");
+        Ok(format!("let {} in {}", bindings_str, self.target.render()?))
     }
 }
 
@@ -719,6 +823,15 @@ impl List {
             elements,
             Span::new(Position::new(1, 1), Position::new(1, 1)),
         )
+    }
+
+    pub fn render(&self) -> Result<String, RenderError> {
+        let elems = self.elements
+            .iter()
+            .map(|e| e.render())
+            .collect::<Result<Vec<_>, _>>()?
+            .join(", ");
+        Ok(format!("[{}]", elems))
     }
 
     pub fn debug(&self) -> String {
@@ -751,6 +864,19 @@ impl Map {
         )
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        let bindings = self.bindings
+            .iter()
+            .map(|b| b.render())
+            .collect::<Result<Vec<_>, _>>()?
+            .join(", ");
+        Ok(if self.recursive {
+            format!("rec {{ {} }}", bindings)
+        } else {
+            format!("{{ {} }}", bindings)
+        })
+    }
+
     pub fn debug(&self) -> String {
         format!("Map(recursive={}, {:?})", self.recursive, self.bindings)
     }
@@ -773,6 +899,14 @@ impl Path {
         Self::new_span(parts, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        Ok(self.parts
+            .iter()
+            .map(|p| p.render())
+            .collect::<Result<Vec<_>, _>>()?
+            .join("/"))
+    }
+
     pub fn debug(&self) -> String {
         format!("Path({:?})", self.parts)
     }
@@ -792,6 +926,10 @@ impl Uri {
 
     pub fn new(uri: String) -> Self {
         Self::new_span(uri, Span::new(Position::new(1, 1), Position::new(1, 1)))
+    }
+
+    pub fn render(&self) -> String {
+        self.uri.clone()
     }
 
     pub fn debug(&self) -> String {
@@ -837,6 +975,23 @@ impl PropertyAccess {
         )
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        let path = self.attribute_path
+            .iter()
+            .map(|e| e.render())
+            .collect::<Result<Vec<_>, _>>()?
+            .join(".");
+        match &self.default {
+            Some(default) => Ok(format!(
+                "{}.?{}.or({})",
+                self.expression.render()?,
+                path,
+                default.render()?
+            )),
+            None => Ok(format!("{}.{}", self.expression.render()?, path)),
+        }
+    }
+
     pub fn debug(&self) -> String {
         format!(
             "PropertyAccess(expr={:?}, path={:?}, default={:?})",
@@ -862,6 +1017,10 @@ impl SearchNixPath {
         Self::new_span(path, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
+    pub fn render(&self) -> String {
+        format!("<{}>", self.path)
+    }
+
     pub fn debug(&self) -> String {
         format!("SearchNixPath('{}')", self.path)
     }
@@ -881,6 +1040,10 @@ impl NixString {
 
     pub fn new(parts: Vec<Expression>) -> Self {
         Self::new_span(parts, Span::new(Position::new(1, 1), Position::new(1, 1)))
+    }
+
+    pub fn render(&self) -> Result<String, RenderError> {
+        Ok(self.parts.iter().map(|p| p.render()).collect::<Result<Vec<_>, _>>()?.join(""))
     }
 
     pub fn debug(&self) -> String {
@@ -909,6 +1072,10 @@ impl UnaryOperation {
         Self::new_span(operator, operand, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
+    pub fn render(&self) ->  Result<String, RenderError> {
+        Ok(format!("({}{})", self.operator.render(), self.operand.render()?))
+    }
+
     pub fn debug(&self) -> String {
         format!("UnaryOperation({:?})", self.operator)
     }
@@ -933,6 +1100,10 @@ impl With {
 
     pub fn new(expression: Expression, target: Expression) -> Self {
         Self::new_span(expression, target, Span::new(Position::new(1, 1), Position::new(1, 1)))
+    }
+
+    pub fn render(&self) -> Result<String, RenderError> {
+        Ok(format!("with {}; {}", self.expression.render()?, self.target.render()?))
     }
 
     pub fn debug(&self) -> String {
@@ -962,6 +1133,17 @@ impl BindingInherit {
         Self::new_span(from_, attributes, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
+    pub fn render(&self) -> Result<String, RenderError> {
+        match &self.from_ {
+            Some(from_expr) => Ok(format!(
+                "inherit ( {}) {}",
+                from_expr.render()?,
+                self.attributes.render()?
+            )),
+            None => Ok(format!("inherit {}", self.attributes.render()?)),
+        }
+    }
+
     pub fn debug(&self) -> String {
         format!("BindingInherit(from={})", self.from_.is_some())
     }
@@ -984,6 +1166,10 @@ impl BindingKeyValue {
 
     pub fn new(from_: Expression, to: Expression) -> Self {
         Self::new_span(from_, to)
+    }
+
+    pub fn render(&self) -> Result<String, RenderError> {
+        Ok(format!("{} = {};", self.from_.render()?, self.to.render()?))
     }
     
     pub fn debug(&self) -> String {
@@ -1038,34 +1224,33 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn render(&self) -> String {
+    pub fn render(&self) -> Result<String, RenderError> {
         match self {
-            Expression::Integer(x) => x.render(),
-            Expression::Float(x) => x.render(),
-            Expression::Identifier(x) => x.render(),
-            // Expression::Error(x) => x.render(),
-            // Expression::UnaryOperation(x) => x.render(),
-            // Expression::BinaryOperation(x) => x.render(),
-            // Expression::IfThenElse(x) => x.render(),
-            // Expression::Assert(x) => x.render(),
-            // Expression::With(x) => x.render(),
-            // Expression::LetIn(x) => x.render(),
-            // Expression::List(x) => x.render(),
-            // Expression::Map(x) => x.render(),
-            // Expression::Path(x) => x.render(),
-            // Expression::Uri(x) => x.render(),
-            // Expression::SearchNixPath(x) => x.render(),
-            // Expression::NixString(x) => x.render(),
-            // Expression::IndentedString(x) => x.render(),
-            // Expression::PartRaw(x) => x.render(),
-            // Expression::PartInterpolation(x) => x.render(),
-            // Expression::PropertyAccess(x) => x.render(),
-            // Expression::HasAttribute(x) => x.render(),
-            // Expression::Function(x) => x.render(),
-            // Expression::FunctionApplication(x) => x.render(),
-            // Expression::BindingInherit(x) => x.render(),
-            // Expression::BindingKeyValue(x) => x.render(),
-            _ => String::from(""),
+            Expression::Integer(x) => Ok(x.render()),
+            Expression::Float(x) => Ok(x.render()),
+            Expression::Identifier(x) => Ok(x.render()),
+            Expression::Error(e) => Err(RenderError::InvalidAst(e.message.clone())),
+            Expression::UnaryOperation(x) => Ok(x.render()?),
+            Expression::BinaryOperation(x) => Ok(x.render()?),
+            Expression::IfThenElse(x) => Ok(x.render()?),
+            Expression::Assert(x) => Ok(x.render()?),
+            Expression::With(x) => Ok(x.render()?),
+            Expression::LetIn(x) => Ok(x.render()?),
+            Expression::List(x) => Ok(x.render()?),
+            Expression::Map(x) => Ok(x.render()?),
+            Expression::Path(x) => Ok(x.render()?),
+            Expression::Uri(x) => Ok(x.render()),
+            Expression::SearchNixPath(x) => Ok(x.render()),
+            Expression::NixString(x) => Ok(x.render()?),
+            Expression::IndentedString(x) => Ok(x.render()?),
+            Expression::PartRaw(x) => Ok(x.render()),
+            Expression::PartInterpolation(x) => Ok(x.render()?),
+            Expression::PropertyAccess(x) => Ok(x.render()?),
+            Expression::HasAttribute(x) => Ok(x.render()?),
+            Expression::Function(x) => Ok(x.render()?),
+            Expression::FunctionApplication(x) => Ok(x.render()?),
+            Expression::BindingInherit(x) => Ok(x.render()?),
+            Expression::BindingKeyValue(x) => Ok(x.render()?),
         }
     }
 }
