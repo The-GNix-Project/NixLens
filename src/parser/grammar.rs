@@ -24,7 +24,7 @@ use std::fmt;
 pub enum RenderError {
     InvalidNode(String),
     UnexpectedError(String),
-    InvalidAst(String)
+    InvalidAst(String),
 }
 
 impl fmt::Display for RenderError {
@@ -32,7 +32,7 @@ impl fmt::Display for RenderError {
         match self {
             RenderError::InvalidNode(msg) => write!(f, "Invalid node: {}", msg),
             RenderError::UnexpectedError(msg) => write!(f, "Unexpected render error: {}", msg),
-            RenderError::InvalidAst(msg) => write!(f, "Invalid AST: {}", msg)
+            RenderError::InvalidAst(msg) => write!(f, "Invalid AST: {}", msg),
         }
     }
 }
@@ -143,9 +143,6 @@ impl Error {
         format!("Error('{}')", self.message)
     }
 
-    //pub fn render(&self) -> Result<String, Box<dyn std::error::Error>> {  // TODO: choose the best way of handling this
-    //    Err(Box::new_span(self.clone()))
-    //}
 }
 
 // MARK: Float
@@ -317,10 +314,13 @@ impl FunctionHeadDestructuredArgument {
         )
     }
 
-    pub fn render(&self) -> String {
+    pub fn render(&self) -> Result<String, RenderError> {
         match &self.default {
-            Some(expr) => format!("{} ? {:?}", self.identifier, expr.render()),
-            None => self.identifier.clone(),
+            Some(expr) => {
+                let rendered = expr.render()?; // unwraps Ok or returns Err
+                Ok(format!("{} ? {}", self.identifier, rendered))
+            }
+            None => Ok(self.identifier.clone()),
         }
     }
 }
@@ -365,12 +365,12 @@ impl FunctionHeadDestructured {
         format!("FunctionHeadDestructured(ellipsis={})", self.ellipsis)
     }
 
-    pub fn render(&self) -> String {
+    pub fn render(&self) -> Result<String, RenderError> {
         let mut result: String = String::new();
         for argument in &self.arguments {
-            result.push_str(&argument.render())
+            result.push_str(&argument.render()?)
         }
-        result
+        Ok(result)
     }
 }
 
@@ -404,15 +404,15 @@ impl FunctionHeadSimple {
     }
 }
 
-enum FunctionHead {
+pub enum FunctionHead {
     FunctionHeadSimple(FunctionHeadSimple),
     FunctionHeadDestructured(FunctionHeadDestructured),
 }
 
 impl FunctionHead {
-    pub fn render(&self) -> String {
+    pub fn render(&self) -> Result<String, RenderError> {
         match self {
-            FunctionHead::FunctionHeadSimple(f) => f.render(),
+            FunctionHead::FunctionHeadSimple(f) => Ok(f.render()),
             FunctionHead::FunctionHeadDestructured(f) => f.render(),
         }
     }
@@ -450,8 +450,8 @@ impl Function {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        let head = self.head.render()?; 
-        let body = self.body.render()?; 
+        let head = self.head.render()?;
+        let body = self.body.render()?;
         Ok(format!("{}: {}", head, body))
     }
 
@@ -593,7 +593,7 @@ impl BinaryOperation {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        let left = self.left.render()?; 
+        let left = self.left.render()?;
         let right = self.right.render()?;
         Ok(format!("({} {} {})", left, self.operator.render(), right))
     }
@@ -685,7 +685,6 @@ impl HasAttribute {
         Ok(format!("{}.{}", expression, path))
     }
 
-
     pub fn debug(&self) -> String {
         format!("HasAttribute({:?})", self.attribute_path)
     }
@@ -708,7 +707,8 @@ impl IndentedString {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        Ok(self.parts
+        Ok(self
+            .parts
             .iter()
             .map(|p| p.render())
             .collect::<Result<Vec<_>, _>>()?
@@ -796,7 +796,8 @@ impl LetIn {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        let bindings_str = self.bindings
+        let bindings_str = self
+            .bindings
             .iter()
             .map(|b| b.render())
             .collect::<Result<Vec<_>, _>>()?
@@ -826,7 +827,8 @@ impl List {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        let elems = self.elements
+        let elems = self
+            .elements
             .iter()
             .map(|e| e.render())
             .collect::<Result<Vec<_>, _>>()?
@@ -865,7 +867,8 @@ impl Map {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        let bindings = self.bindings
+        let bindings = self
+            .bindings
             .iter()
             .map(|b| b.render())
             .collect::<Result<Vec<_>, _>>()?
@@ -900,7 +903,8 @@ impl Path {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        Ok(self.parts
+        Ok(self
+            .parts
             .iter()
             .map(|p| p.render())
             .collect::<Result<Vec<_>, _>>()?
@@ -976,7 +980,8 @@ impl PropertyAccess {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        let path = self.attribute_path
+        let path = self
+            .attribute_path
             .iter()
             .map(|e| e.render())
             .collect::<Result<Vec<_>, _>>()?
@@ -1043,7 +1048,12 @@ impl NixString {
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        Ok(self.parts.iter().map(|p| p.render()).collect::<Result<Vec<_>, _>>()?.join(""))
+        Ok(self
+            .parts
+            .iter()
+            .map(|p| p.render())
+            .collect::<Result<Vec<_>, _>>()?
+            .join(""))
     }
 
     pub fn debug(&self) -> String {
@@ -1069,11 +1079,19 @@ impl UnaryOperation {
     }
 
     pub fn new(operator: Operator, operand: Expression) -> Self {
-        Self::new_span(operator, operand, Span::new(Position::new(1, 1), Position::new(1, 1)))
+        Self::new_span(
+            operator,
+            operand,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
-    pub fn render(&self) ->  Result<String, RenderError> {
-        Ok(format!("({}{})", self.operator.render(), self.operand.render()?))
+    pub fn render(&self) -> Result<String, RenderError> {
+        Ok(format!(
+            "({}{})",
+            self.operator.render(),
+            self.operand.render()?
+        ))
     }
 
     pub fn debug(&self) -> String {
@@ -1099,11 +1117,19 @@ impl With {
     }
 
     pub fn new(expression: Expression, target: Expression) -> Self {
-        Self::new_span(expression, target, Span::new(Position::new(1, 1), Position::new(1, 1)))
+        Self::new_span(
+            expression,
+            target,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
-        Ok(format!("with {}; {}", self.expression.render()?, self.target.render()?))
+        Ok(format!(
+            "with {}; {}",
+            self.expression.render()?,
+            self.target.render()?
+        ))
     }
 
     pub fn debug(&self) -> String {
@@ -1130,7 +1156,11 @@ impl BindingInherit {
     }
 
     pub fn new(from_: Option<Expression>, attributes: Expression) -> Self {
-        Self::new_span(from_, attributes, Span::new(Position::new(1, 1), Position::new(1, 1)))
+        Self::new_span(
+            from_,
+            attributes,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
     pub fn render(&self) -> Result<String, RenderError> {
@@ -1171,7 +1201,7 @@ impl BindingKeyValue {
     pub fn render(&self) -> Result<String, RenderError> {
         Ok(format!("{} = {};", self.from_.render()?, self.to.render()?))
     }
-    
+
     pub fn debug(&self) -> String {
         format!("KeyValue({:?})", self.from_)
     }

@@ -17,6 +17,7 @@
 // -----------------------------------------------------------------------------------------|
 
 use parser::grammar::RenderError;
+use parser::parser::parse_nix;
 
 mod parser;
 
@@ -46,6 +47,6 @@ fn main() ->Result<(), RenderError> {
     println!("Not operator render: {}", not_op.render());
 
     let struc_func_head = FunctionHeadDestructuredArgument::new(String::from("name"), Some(Expression::Integer(Integer::new(2.to_string()))));
-    println!("Structured Function Head render: {}", struc_func_head.render());
+    println!("Structured Function Head render: {}", struc_func_head.render()?);
     Ok(())
 }
