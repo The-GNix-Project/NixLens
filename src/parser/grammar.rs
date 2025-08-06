@@ -16,6 +16,8 @@
 // along with GNix.  If not, see <https://www.gnu.org/licenses/>.                           |
 // -----------------------------------------------------------------------------------------|
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use std::fmt;
 
 // ==================== CORE STRUCTURES =================
@@ -79,8 +81,15 @@ impl fmt::Display for Identifier {
 }
 
 impl Identifier {
-    pub fn new(id: String, span: Span) -> Self {
+    pub fn new_span(id: String, span: Span) -> Self {
         Self { id, span }
+    }
+
+    pub fn new(id: String) -> Self {
+        Self {
+            id,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -100,8 +109,15 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn new(message: String, span: Span) -> Self {
+    pub fn new_span(message: String, span: Span) -> Self {
         Self { message, span }
+    }
+
+    pub fn new(message: String) -> Self {
+        Self {
+            message,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -109,7 +125,7 @@ impl Error {
     }
 
     //pub fn render(&self) -> Result<String, Box<dyn std::error::Error>> {  // TODO: choose the best way of handling this
-    //    Err(Box::new(self.clone()))
+    //    Err(Box::new_span(self.clone()))
     //}
 }
 
@@ -121,8 +137,15 @@ pub struct Float {
 }
 
 impl Float {
-    pub fn new(value: String, span: Span) -> Self {
+    pub fn new_span(value: String, span: Span) -> Self {
         Self { value, span }
+    }
+
+    pub fn new(value: String) -> Self {
+        Self {
+            value,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -142,8 +165,15 @@ pub struct Integer {
 }
 
 impl Integer {
-    pub fn new(value: String, span: Span) -> Self {
+    pub fn new_span(value: String, span: Span) -> Self {
         Self { value, span }
+    }
+
+    pub fn new(value: String) -> Self {
+        Self {
+            value,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -202,15 +232,29 @@ impl_operator!(
 
 #[derive(Clone, Debug)]
 pub enum Operator {
-    Addition(Addition), Concatenation(Concatenation), EqualTo(EqualTo), GreaterThan(GreaterThan), GreaterThanOrEqualTo(GreaterThanOrEqualTo), Division(Division),
-    Implication(Implication), LessThan(LessThan), LessThanOrEqualTo(LessThanOrEqualTo), LogicalAnd(LogicalAnd), LogicalOr(LogicalOr), Multiplication(Multiplication),
-    NotEqualTo(NotEqualTo), Subtraction(Subtraction), Update(Update), Not(Not), Negate(Negate)    
+    Addition(Addition),
+    Concatenation(Concatenation),
+    EqualTo(EqualTo),
+    GreaterThan(GreaterThan),
+    GreaterThanOrEqualTo(GreaterThanOrEqualTo),
+    Division(Division),
+    Implication(Implication),
+    LessThan(LessThan),
+    LessThanOrEqualTo(LessThanOrEqualTo),
+    LogicalAnd(LogicalAnd),
+    LogicalOr(LogicalOr),
+    Multiplication(Multiplication),
+    NotEqualTo(NotEqualTo),
+    Subtraction(Subtraction),
+    Update(Update),
+    Not(Not),
+    Negate(Negate),
 }
 
 impl Operator {
     pub fn render(&self) -> String {
         match self {
-            Operator::Addition(x) => x.render(), 
+            Operator::Addition(x) => x.render(),
             Operator::Concatenation(x) => x.render(),
             Operator::EqualTo(x) => x.render(),
             Operator::GreaterThan(x) => x.render(),
@@ -226,7 +270,7 @@ impl Operator {
             Operator::Subtraction(x) => x.render(),
             Operator::Update(x) => x.render(),
             Operator::Not(x) => x.render(),
-            Operator::Negate(x) => x.render()
+            Operator::Negate(x) => x.render(),
         }
     }
 }
@@ -241,7 +285,10 @@ pub struct FunctionHeadDestructuredArgument {
 
 impl FunctionHeadDestructuredArgument {
     pub fn new(identifier: String, default: Option<Expression>) -> Self {
-        Self { identifier, default }
+        Self {
+            identifier,
+            default,
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -268,7 +315,7 @@ pub struct FunctionHeadDestructured {
 }
 
 impl FunctionHeadDestructured {
-    pub fn new(
+    pub fn new_span(
         ellipsis: bool,
         identifier: Identifier,
         arguments: Vec<FunctionHeadDestructuredArgument>,
@@ -279,6 +326,19 @@ impl FunctionHeadDestructured {
             identifier,
             arguments,
             span,
+        }
+    }
+
+    pub fn new(
+        ellipsis: bool,
+        identifier: Identifier,
+        arguments: Vec<FunctionHeadDestructuredArgument>,
+    ) -> Self {
+        Self {
+            ellipsis,
+            identifier,
+            arguments,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
         }
     }
 
@@ -302,8 +362,15 @@ pub struct FunctionHeadSimple {
 }
 
 impl FunctionHeadSimple {
-    pub fn new(identifier: Identifier, span: Span) -> Self {
+    pub fn new_span(identifier: Identifier, span: Span) -> Self {
         Self { identifier, span }
+    }
+
+    pub fn new(identifier: Identifier) -> Self {
+        Self {
+            identifier,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -315,8 +382,17 @@ impl FunctionHeadSimple {
 }
 
 enum FunctionHead {
-    FunctionHead,
-    FunctionHeadDestructured
+    FunctionHeadSimple(FunctionHeadSimple),
+    FunctionHeadDestructured(FunctionHeadDestructured),
+}
+
+impl FunctionHead {
+    pub fn debug(&self) -> String {
+        match self {
+            FunctionHead::FunctionHeadSimple(x) => x.debug(),
+            FunctionHead::FunctionHeadDestructured(x) => x.debug(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -327,11 +403,19 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(head: Expression, body: Expression, span: Span) -> Self {
+    pub fn new_span(head: Expression, body: Expression, span: Span) -> Self {
         Self {
             head: Box::new(head),
             body: Box::new(body),
             span,
+        }
+    }
+
+    pub fn new(head: Expression, body: Expression) -> Self {
+        Self {
+            head: Box::new(head),
+            body: Box::new(body),
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
         }
     }
 
@@ -348,11 +432,19 @@ pub struct FunctionApplication {
 }
 
 impl FunctionApplication {
-    pub fn new(function: Expression, arguments: Vec<Expression>, span: Span) -> Self {
+    pub fn new_span(function: Expression, arguments: Vec<Expression>, span: Span) -> Self {
         Self {
             function: Box::new(function),
             arguments,
             span,
+        }
+    }
+
+    pub fn new(function: Expression, arguments: Vec<Expression>, span: Span) -> Self {
+        Self {
+            function: Box::new(function),
+            arguments,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
         }
     }
 
@@ -373,8 +465,18 @@ pub struct PartInterpolation {
 }
 
 impl PartInterpolation {
-    pub fn new(expression: Box<Expression>, span: Span) -> Self {
-        Self { expression, span }
+    pub fn new_span(expression: Expression, span: Span) -> Self {
+        Self {
+            expression: Box::new(expression),
+            span,
+        }
+    }
+
+    pub fn new(expression: Expression, span: Span) -> Self {
+        Self {
+            expression: Box::new(expression),
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -390,8 +492,15 @@ pub struct PartRaw {
 }
 
 impl PartRaw {
-    pub fn new(content: String, span: Span) -> Self {
+    pub fn new_span(content: String, span: Span) -> Self {
         Self { content, span }
+    }
+
+    pub fn new(content: String) -> Self {
+        Self {
+            content,
+            span: Span::new(Position::new(1, 1), Position::new(1, 1)),
+        }
     }
 
     pub fn debug(&self) -> String {
@@ -410,7 +519,7 @@ pub struct BinaryOperation {
 }
 
 impl BinaryOperation {
-    pub fn new(left: Expression, operator: Operator, right: Expression, span: Span) -> Self {
+    pub fn new_span(left: Expression, operator: Operator, right: Expression, span: Span) -> Self {
         Self {
             left: Box::new(left),
             operator,
@@ -419,8 +528,20 @@ impl BinaryOperation {
         }
     }
 
+    pub fn new(left: Expression, operator: Operator, right: Expression) -> Self {
+        Self::new_span(
+            left,
+            operator,
+            right,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
+    }
+
     pub fn debug(&self) -> String {
-        format!("BinaryOperation({:?}, {:?}, {:?})", self.left, self.operator, self.right)
+        format!(
+            "BinaryOperation({:?}, {:?}, {:?})",
+            self.left, self.operator, self.right
+        )
     }
 }
 
@@ -433,7 +554,7 @@ pub struct Assert {
 }
 
 impl Assert {
-    pub fn new(expression: Expression, target: Expression, span: Span) -> Self {
+    pub fn new_span(expression: Expression, target: Expression, span: Span) -> Self {
         Self {
             expression: Box::new(expression),
             target: Box::new(target),
@@ -441,8 +562,19 @@ impl Assert {
         }
     }
 
+    pub fn new(expression: Expression, target: Expression) -> Self {
+        Self::new_span(
+            expression,
+            target,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
+    }
+
     pub fn debug(&self) -> String {
-        format!("Assert(expr={:?}, target={:?})", self.expression, self.target)
+        format!(
+            "Assert(expr={:?}, target={:?})",
+            self.expression, self.target
+        )
     }
 }
 
@@ -456,12 +588,20 @@ pub struct HasAttribute {
 }
 
 impl HasAttribute {
-    pub fn new(expression: Expression, attribute_path: Vec<Expression>, span: Span) -> Self {
+    pub fn new_span(expression: Expression, attribute_path: Vec<Expression>, span: Span) -> Self {
         Self {
             expression: Box::new(expression),
             attribute_path,
             span,
         }
+    }
+
+    pub fn new(expression: Expression, attribute_path: Vec<Expression>) -> Self {
+        Self::new_span(
+            expression,
+            attribute_path,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
     pub fn debug(&self) -> String {
@@ -477,8 +617,12 @@ pub struct IndentedString {
 }
 
 impl IndentedString {
-    pub fn new(parts: Vec<Expression>, span: Span) -> Self {
+    pub fn new_span(parts: Vec<Expression>, span: Span) -> Self {
         Self { parts, span }
+    }
+
+    pub fn new(parts: Vec<Expression>) -> Self {
+        Self::new_span(parts, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -496,7 +640,12 @@ pub struct IfThenElse {
 }
 
 impl IfThenElse {
-    pub fn new(predicate: Expression, then: Expression, else_: Expression, span: Span) -> Self {
+    pub fn new_span(
+        predicate: Expression,
+        then: Expression,
+        else_: Expression,
+        span: Span,
+    ) -> Self {
         Self {
             predicate: Box::new(predicate),
             then: Box::new(then),
@@ -505,8 +654,20 @@ impl IfThenElse {
         }
     }
 
+    pub fn new(predicate: Expression, then: Expression, else_: Expression) -> Self {
+        Self::new_span(
+            predicate,
+            then,
+            else_,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
+    }
+
     pub fn debug(&self) -> String {
-        format!("IfThenElse({:?}, {:?}, {:?})", self.predicate, self.then, self.else_)
+        format!(
+            "IfThenElse({:?}, {:?}, {:?})",
+            self.predicate, self.then, self.else_
+        )
     }
 }
 
@@ -519,12 +680,20 @@ pub struct LetIn {
 }
 
 impl LetIn {
-    pub fn new(bindings: Vec<Expression>, target: Expression, span: Span) -> Self {
+    pub fn new_span(bindings: Vec<Expression>, target: Expression, span: Span) -> Self {
         Self {
             bindings,
             target: Box::new(target),
             span,
         }
+    }
+
+    pub fn new(bindings: Vec<Expression>, target: Expression) -> Self {
+        Self::new_span(
+            bindings,
+            target,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
     pub fn debug(&self) -> String {
@@ -541,8 +710,15 @@ pub struct List {
 }
 
 impl List {
-    pub fn new(elements: Vec<Expression>, span: Span) -> Self {
+    pub fn new_span(elements: Vec<Expression>, span: Span) -> Self {
         Self { elements, span }
+    }
+
+    pub fn new(elements: Vec<Expression>) -> Self {
+        Self::new_span(
+            elements,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
     pub fn debug(&self) -> String {
@@ -559,8 +735,20 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(recursive: bool, bindings: Vec<Expression>, span: Span) -> Self {
-        Self { recursive, bindings, span }
+    pub fn new_span(recursive: bool, bindings: Vec<Expression>, span: Span) -> Self {
+        Self {
+            recursive,
+            bindings,
+            span,
+        }
+    }
+
+    pub fn new(recursive: bool, bindings: Vec<Expression>) -> Self {
+        Self::new_span(
+            recursive,
+            bindings,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
     pub fn debug(&self) -> String {
@@ -577,8 +765,12 @@ pub struct Path {
 }
 
 impl Path {
-    pub fn new(parts: Vec<Expression>, span: Span) -> Self {
+    pub fn new_span(parts: Vec<Expression>, span: Span) -> Self {
         Self { parts, span }
+    }
+
+    pub fn new(parts: Vec<Expression>) -> Self {
+        Self::new_span(parts, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -594,8 +786,12 @@ pub struct Uri {
 }
 
 impl Uri {
-    pub fn new(uri: String, span: Span) -> Self {
+    pub fn new_span(uri: String, span: Span) -> Self {
         Self { uri, span }
+    }
+
+    pub fn new(uri: String) -> Self {
+        Self::new_span(uri, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -614,7 +810,7 @@ pub struct PropertyAccess {
 }
 
 impl PropertyAccess {
-    pub fn new(
+    pub fn new_span(
         expression: Expression,
         attribute_path: Vec<Expression>,
         default: Option<Expression>,
@@ -626,6 +822,19 @@ impl PropertyAccess {
             default: default.map(Box::new),
             span,
         }
+    }
+
+    pub fn new(
+        expression: Expression,
+        attribute_path: Vec<Expression>,
+        default: Option<Expression>,
+    ) -> Self {
+        Self::new_span(
+            expression,
+            attribute_path,
+            default,
+            Span::new(Position::new(1, 1), Position::new(1, 1)),
+        )
     }
 
     pub fn debug(&self) -> String {
@@ -645,8 +854,12 @@ pub struct SearchNixPath {
 }
 
 impl SearchNixPath {
-    pub fn new(path: String, span: Span) -> Self {
+    pub fn new_span(path: String, span: Span) -> Self {
         Self { path, span }
+    }
+
+    pub fn new(path: String) -> Self {
+        Self::new_span(path, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -662,8 +875,12 @@ pub struct NixString {
 }
 
 impl NixString {
-    pub fn new(parts: Vec<Expression>, span: Span) -> Self {
+    pub fn new_span(parts: Vec<Expression>, span: Span) -> Self {
         Self { parts, span }
+    }
+
+    pub fn new(parts: Vec<Expression>) -> Self {
+        Self::new_span(parts, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -680,12 +897,16 @@ pub struct UnaryOperation {
 }
 
 impl UnaryOperation {
-    pub fn new(operator: Operator, operand: Expression, span: Span) -> Self {
+    pub fn new_span(operator: Operator, operand: Expression, span: Span) -> Self {
         Self {
             operator,
             operand: Box::new(operand),
             span,
         }
+    }
+
+    pub fn new(operator: Operator, operand: Expression) -> Self {
+        Self::new_span(operator, operand, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -702,12 +923,16 @@ pub struct With {
 }
 
 impl With {
-    pub fn new(expression: Expression, target: Expression, span: Span) -> Self {
+    pub fn new_span(expression: Expression, target: Expression, span: Span) -> Self {
         Self {
             expression: Box::new(expression),
             target: Box::new(target),
             span,
         }
+    }
+
+    pub fn new(expression: Expression, target: Expression) -> Self {
+        Self::new_span(expression, target, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -725,12 +950,16 @@ pub struct BindingInherit {
 }
 
 impl BindingInherit {
-    pub fn new(from_: Option<Expression>, attributes: Expression, span: Span) -> Self {
+    pub fn new_span(from_: Option<Expression>, attributes: Expression, span: Span) -> Self {
         Self {
             from_: from_.map(Box::new),
             attributes: Box::new(attributes),
             span,
         }
+    }
+
+    pub fn new(from_: Option<Expression>, attributes: Expression) -> Self {
+        Self::new_span(from_, attributes, Span::new(Position::new(1, 1), Position::new(1, 1)))
     }
 
     pub fn debug(&self) -> String {
@@ -746,13 +975,17 @@ pub struct BindingKeyValue {
 }
 
 impl BindingKeyValue {
-    pub fn new(from_: Expression, to: Expression) -> Self {
+    pub fn new_span(from_: Expression, to: Expression) -> Self {
         Self {
             from_: Box::new(from_),
             to: Box::new(to),
         }
     }
 
+    pub fn new(from_: Expression, to: Expression) -> Self {
+        Self::new_span(from_, to)
+    }
+    
     pub fn debug(&self) -> String {
         format!("KeyValue({:?})", self.from_)
     }
@@ -832,7 +1065,7 @@ impl Expression {
             // Expression::FunctionApplication(x) => x.render(),
             // Expression::BindingInherit(x) => x.render(),
             // Expression::BindingKeyValue(x) => x.render(),
-            _ => String::from("")
+            _ => String::from(""),
         }
     }
 }

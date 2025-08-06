@@ -20,20 +20,17 @@ mod parser;
 
 fn main() {
     use parser::grammar::*;
-    // Create a Position and Span (used by all types)
-    let pos = Position::new(1, 1);
-    let span = Span::new(pos.clone(), pos.clone());
-
+    
     // Test Integer
-    let int_expr = Expression::Integer(Integer::new("42".to_string(), span.clone()));
+    let int_expr = Expression::Integer(Integer::new("42".to_string()));
     println!("Integer render: {}", int_expr.render());
 
     // Test Float
-    let float_expr = Expression::Float(Float::new("3.14".to_string(), span.clone()));
+    let float_expr = Expression::Float(Float::new("3.14".to_string()));
     println!("Float render: {}", float_expr.render());
 
     // Test Identifier
-    let id_expr = Expression::Identifier(Identifier::new("myVar".to_string(), span.clone()));
+    let id_expr = Expression::Identifier(Identifier::new("myVar".to_string()));
     println!("Identifier render: {}", id_expr.render());
 
     // Test Operators directly
@@ -46,6 +43,6 @@ fn main() {
     let not_op = Operator::Not(Not);
     println!("Not operator render: {}", not_op.render());
 
-    let struc_func_head = FunctionHeadDestructuredArgument::new(String::from("name"), Some(Expression::Integer(Integer::new(2.to_string(), span.clone()))));
+    let struc_func_head = FunctionHeadDestructuredArgument::new(String::from("name"), Some(Expression::Integer(Integer::new(2.to_string()))));
     println!("Structured Function Head render: {}", struc_func_head.render())
 }
