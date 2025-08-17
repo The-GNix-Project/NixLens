@@ -4,8 +4,33 @@ integer     = { ASCII_DIGIT+ }
 boolean     = { "true" | "false" }
 identifier  = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
-expr        = { binary | primary }
+expr        = { binary | unary | primary }
 
-binary      = { primary ~ ("+" ~ primary)+ }
+binary      = { primary ~ (operator ~ primary)+ }
+unary       = { (op_not | op_sub) ~ primary }
+
+operator    = {
+    op_add | op_sub | op_mul | op_div |
+    op_eq | op_neq | op_gt | op_gte | op_lt | op_lte |
+    op_and | op_or | op_concat | op_impl | op_update
+}
+
 
 primary     = { integer | boolean | identifier }
+
+op_add      = { "+" }
+op_sub      = { "-" }
+op_mul      = { "*" }
+op_div      = { "/" }
+op_eq       = { "==" }
+op_neq      = { "!=" }
+op_gt       = { ">" }
+op_gte      = { ">=" }
+op_lt       = { "<" }
+op_lte      = { "<=" }
+op_and      = { "&&" }
+op_or       = { "||" }
+op_concat   = { "++" }
+op_impl     = { "=>" }
+op_update   = { ":=" }
+op_not      = { "!" }

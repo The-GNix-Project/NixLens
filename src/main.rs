@@ -18,26 +18,14 @@
 
 use parser::ast::core::*;
 use parser::ast::expr::*;
+use pest::Parser;
 
-use crate::parser::ast::operators::Addition;
+use parser::parser::{NixParser, parse_expr, parse, Rule};
 
 mod parser;
 
 fn main() {
     println!("GNix NixLens Parser Module");
 
-    // Example usage of the Expression enum
-    let operation = BinaryOperation::new(
-        Expression::Integer(Integer::new(42.to_string())),
-        operators::Operator::Addition(Addition),
-        Expression::Integer(Integer::new(58.to_string())),
-    );
-    let expr = match operation {
-        Ok(op) => Expression::BinaryOperation(op),
-        Err(e) => {
-            eprintln!("Error creating binary operation: {}", e.message);
-            return;
-        }
-    };
-    println!("{}", expr.render().unwrap());
+    print!("{:?}", parse("x + 1").unwrap());
 }
