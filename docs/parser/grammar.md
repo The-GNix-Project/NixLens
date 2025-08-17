@@ -1,3 +1,4 @@
+# THIS DOCUMENT IS OUT OF DATE
 # Nix Grammar
 This document describes all the grammar defined in the AST for the Nix parser
 
