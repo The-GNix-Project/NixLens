@@ -16,5 +16,4 @@
 // along with GNix.  If not, see <https://www.gnu.org/licenses/>.                           |
 // -----------------------------------------------------------------------------------------|
 
-pub mod grammar;
-pub mod parser;
+pub mod ast;

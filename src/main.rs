@@ -16,37 +16,28 @@
 // along with GNix.  If not, see <https://www.gnu.org/licenses/>.                           |
 // -----------------------------------------------------------------------------------------|
 
-use parser::grammar::RenderError;
-use parser::parser::parse_nix;
+use parser::ast::core::*;
+use parser::ast::expr::*;
+
+use crate::parser::ast::operators::Addition;
 
 mod parser;
 
-fn main() ->Result<(), RenderError> {
-    use parser::grammar::*;
-    
-    // Test Integer
-    let int_expr = Expression::Integer(Integer::new("42".to_string()));
-    println!("Integer render: {}", int_expr.render()?);
+fn main() {
+    println!("GNix NixLens Parser Module");
 
-    // Test Float
-    let float_expr = Expression::Float(Float::new("3.14".to_string()));
-    println!("Float render: {}", float_expr.render()?);
-
-    // Test Identifier
-    let id_expr = Expression::Identifier(Identifier::new("myVar".to_string()));
-    println!("Identifier render: {}", id_expr.render()?);
-
-    // Test Operators directly
-    let add_op = Operator::Addition(Addition);
-    println!("Addition operator render: {}", add_op.render());
-
-    let eq_op = Operator::EqualTo(EqualTo);
-    println!("EqualTo operator render: {}", eq_op.render());
-
-    let not_op = Operator::Not(Not);
-    println!("Not operator render: {}", not_op.render());
-
-    let struc_func_head = FunctionHeadDestructuredArgument::new(String::from("name"), Some(Expression::Integer(Integer::new(2.to_string()))));
-    println!("Structured Function Head render: {}", struc_func_head.render()?);
-    Ok(())
+    // Example usage of the Expression enum
+    let operation = BinaryOperation::new(
+        Expression::Integer(Integer::new(42.to_string())),
+        operators::Operator::Addition(Addition),
+        Expression::Integer(Integer::new(58.to_string())),
+    );
+    let expr = match operation {
+        Ok(op) => Expression::BinaryOperation(op),
+        Err(e) => {
+            eprintln!("Error creating binary operation: {}", e.message);
+            return;
+        }
+    };
+    println!("{}", expr.render().unwrap());
 }
