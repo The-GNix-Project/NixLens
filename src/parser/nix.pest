@@ -1,0 +1,11 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+integer     = { ASCII_DIGIT+ }
+boolean     = { "true" | "false" }
+identifier  = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+expr        = { binary | primary }
+
+binary      = { primary ~ ("+" ~ primary)+ }
+
+primary     = { integer | boolean | identifier }
